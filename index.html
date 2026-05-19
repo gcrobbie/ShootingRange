@@ -201,9 +201,7 @@ tr:hover td{background:#111}
   </div>
 </nav>
 
-<!-- ════════════════════════════════════════
-     PLAYER PAGE
-════════════════════════════════════════ -->
+<!-- PLAYER PAGE -->
 <div id="page-player" class="page active">
 
   <div class="big-title">READY?</div>
@@ -211,10 +209,8 @@ tr:hover td{background:#111}
 
   <div class="offline-banner" id="p-offline">⚠ Bridge offline — run bridge.py on your computer first</div>
 
-  <!-- "Bored?" button -->
-<a href="https://snak-oi.vercel.app/" target="_blank" class="bored-btn">😴 Bored? Play Snak.oi →</a>
+  <a href="https://snak-oi.vercel.app/" target="_blank" class="bored-btn">😴 Bored? Play Snak.oi →</a>
 
-  <!-- ── REGISTER FORM (shown when idle) ── -->
   <div id="register-section">
     <div class="card" style="max-width:480px;margin:0 auto 28px">
       <div class="card-title">Register Your Name</div>
@@ -227,7 +223,6 @@ tr:hover td{background:#111}
     </div>
   </div>
 
-  <!-- ── QUEUE NUMBER (shown after registration, while waiting) ── -->
   <div class="queue-hero" id="queue-hero" style="display:none">
     <div class="qh-label">Your Queue Number</div>
     <div class="qh-number" id="qh-number">—</div>
@@ -235,13 +230,11 @@ tr:hover td{background:#111}
     <div class="qh-status waiting" id="qh-status">Waiting</div>
   </div>
 
-  <!-- ── YOUR TURN BANNER ── -->
   <div class="your-turn-banner" id="your-turn-banner">
     <div class="ytb-title">🎯 IT'S YOUR TURN!</div>
     <div class="ytb-sub">Head to the range — the admin will start your session shortly</div>
   </div>
 
-  <!-- ── LIVE SCORE VIEW (shown during session) ── -->
   <div class="live-view" id="live-view">
     <div class="lv-name" id="lv-name">PLAYER</div>
     <div class="lv-score" id="lv-score">0</div>
@@ -249,7 +242,6 @@ tr:hover td{background:#111}
     <div class="lv-timer">Time left: <span id="lv-timer-val">2:00</span></div>
   </div>
 
-  <!-- ── SESSION ENDED VIEW ── -->
   <div class="session-ended" id="session-ended">
     <div class="se-title">Session Complete</div>
     <div class="se-score" id="se-score">0</div>
@@ -257,7 +249,6 @@ tr:hover td{background:#111}
     <button class="btn btn-accent" onclick="rejoinQueue()">🔄 Queue Again</button>
   </div>
 
-  <!-- ── LEADERBOARD ── -->
   <div style="margin-top:32px">
     <p class="section-label">Leaderboard (best scores)</p>
     <table>
@@ -267,9 +258,7 @@ tr:hover td{background:#111}
   </div>
 </div>
 
-<!-- ════════════════════════════════════════
-     ADMIN PAGE
-════════════════════════════════════════ -->
+<!-- ADMIN PAGE -->
 <div id="page-admin" class="page">
 
   <div class="stats-row">
@@ -279,19 +268,16 @@ tr:hover td{background:#111}
     <div class="stat"><div class="stat-label">Now Shooting</div><div class="stat-val" id="a-active" style="font-size:22px;padding-top:8px">—</div></div>
   </div>
 
-  <!-- ── CURRENT SESSION ── -->
   <div class="card" id="session-card">
     <div class="card-title">Current Session</div>
     <div id="session-content"></div>
   </div>
 
-  <!-- ── QUEUE ── -->
   <div class="card">
     <div class="card-title">Queue</div>
     <div id="queue-list-admin"></div>
   </div>
 
-  <!-- ── MANUAL SCORE ── -->
   <div class="card">
     <div class="card-title">Set Score Manually</div>
     <div id="score-flash" class="flash"></div>
@@ -302,7 +288,6 @@ tr:hover td{background:#111}
     </div>
   </div>
 
-  <!-- ── ALL PLAYERS TABLE ── -->
   <p class="section-label" style="margin-bottom:14px">All Players</p>
   <table>
     <thead><tr><th>#</th><th>Player</th><th>Live Score</th><th>Best</th><th>Status</th><th></th></tr></thead>
@@ -311,18 +296,18 @@ tr:hover td{background:#111}
 </div>
 
 <script>
-const API = "https://regretful-washbowl-groove.ngrok-free.dev";
-const PASSWORD = "67"; // ← admin password
+const API      = "https://regretful-washbowl-groove.ngrok-free.dev";
+const PASSWORD = "67";
+const HEADERS  = { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" };
 
-let state      = { players:{}, active:null, queue:[], history:{}, session_elapsed:0, session_duration:120 };
-let myPlayer   = null;
-let myState    = "idle"; // idle | queued | your-turn | live | ended
-let lastEndedScore = 0;
-let adminUnlocked  = false;
+let state           = { players:{}, active:null, queue:[], history:{}, session_elapsed:0, session_duration:120 };
+let myPlayer        = null;
+let myState         = "idle";
+let lastEndedScore  = 0;
+let adminUnlocked   = false;
 let pendingAdminBtn = null;
-let prevActive = null;     // detect when session ends for player
+let pingedThisTurn  = false;
 
-// ── PASSWORD ──────────────────────────────────────────────────────────────────
 function tryAdmin(btn) {
   if (adminUnlocked) { showPage('admin', btn); return; }
   pendingAdminBtn = btn;
@@ -343,10 +328,9 @@ function checkPassword() {
   }
 }
 
-// ── FETCH ─────────────────────────────────────────────────────────────────────
 async function fetchState() {
   try {
-    const r = await fetch(API + "/scores");
+    const r = await fetch(API + "/scores", { headers: HEADERS });
     if (!r.ok) throw 0;
     state = await r.json();
     if (!state.queue)   state.queue   = [];
@@ -359,53 +343,45 @@ async function fetchState() {
 }
 
 function setConn(ok) {
-  document.getElementById('conn-dot').className     = 'conn-dot ' + (ok ? 'ok' : 'err');
-  document.getElementById('conn-label').textContent  = ok ? 'LIVE' : 'OFFLINE';
+  document.getElementById('conn-dot').className    = 'conn-dot ' + (ok ? 'ok' : 'err');
+  document.getElementById('conn-label').textContent = ok ? 'LIVE' : 'OFFLINE';
   document.getElementById('p-offline').classList.toggle('show', !ok);
 }
 
-// ── RENDER ─────────────────────────────────────────────────────────────────────
 function render() {
-  // ── Determine my state ──
   if (myPlayer) {
-    const inQueue   = state.queue && state.queue.includes(myPlayer);
-    const isActive  = state.active === myPlayer;
-    const queuePos  = inQueue ? state.queue.indexOf(myPlayer) + 1 : null;
-    const isNext    = inQueue && queuePos === 1;
+    const inQueue  = state.queue && state.queue.includes(myPlayer);
+    const isActive = state.active === myPlayer;
+    const queuePos = inQueue ? state.queue.indexOf(myPlayer) + 1 : null;
+    const isNext   = inQueue && queuePos === 1;
 
     if (isActive) {
       myState = 'live';
     } else if (inQueue) {
       myState = isNext ? 'your-turn' : 'queued';
     } else if (myState === 'live') {
-      // Was live, no longer active — session just ended
       lastEndedScore = state.players[myPlayer] ?? 0;
       myState = 'ended';
     } else if (myState === 'your-turn' && !inQueue && !isActive) {
-      // Admin skipped us (moved to back) — re-evaluate next tick
-      // Actually re-check inQueue
       myState = 'idle';
       myPlayer = null;
     }
   }
 
-  // ── Show/hide player sections ──
-  const idle      = myState === 'idle';
-  const queued    = myState === 'queued' || myState === 'your-turn';
-  const isLive    = myState === 'live';
-  const ended     = myState === 'ended';
-  const yourTurn  = myState === 'your-turn';
+  const idle     = myState === 'idle';
+  const queued   = myState === 'queued' || myState === 'your-turn';
+  const isLive   = myState === 'live';
+  const ended    = myState === 'ended';
+  const yourTurn = myState === 'your-turn';
 
-  document.getElementById('register-section').style.display    = idle ? 'block' : 'none';
-  document.getElementById('queue-hero').style.display          = queued ? 'block' : 'none';
+  document.getElementById('register-section').style.display   = idle ? 'block' : 'none';
+  document.getElementById('queue-hero').style.display         = queued ? 'block' : 'none';
   document.getElementById('your-turn-banner').classList.toggle('visible', yourTurn);
   document.getElementById('live-view').classList.toggle('visible', isLive);
   document.getElementById('session-ended').classList.toggle('visible', ended);
 
-  // Queue hero
   if (queued && myPlayer) {
     const qPos = state.queue.indexOf(myPlayer) + 1;
-    const totalInQueue = state.queue.length;
     document.getElementById('qh-number').textContent = '#' + qPos;
     document.getElementById('qh-pos').textContent    =
       qPos === 1 ? 'You are next!' : `${qPos - 1} player${qPos - 1 > 1 ? 's' : ''} ahead of you`;
@@ -420,7 +396,6 @@ function render() {
     }
   }
 
-  // Live view
   if (isLive && myPlayer) {
     const scoreEl = document.getElementById('lv-score');
     const nv      = state.players[myPlayer] ?? 0;
@@ -436,53 +411,37 @@ function render() {
     document.getElementById('lv-timer-val').textContent = `${m}:${s.toString().padStart(2,'0')}`;
   }
 
-  // Session ended
-  if (ended) {
-    document.getElementById('se-score').textContent = lastEndedScore;
-  }
+  if (ended) document.getElementById('se-score').textContent = lastEndedScore;
 
-  // Leaderboard (show best score per player from history)
   renderLeaderboard();
-
-  // Admin
-  if (document.getElementById('page-admin').classList.contains('active')) {
-    renderAdmin();
-  }
+  if (document.getElementById('page-admin').classList.contains('active')) renderAdmin();
 }
 
-// ── YOUR TURN PING ──────────────────────────────────────────────────────────
-let pingedThisTurn = false;
 function pingYourTurn() {
   if (pingedThisTurn) return;
   pingedThisTurn = true;
-  // Vibrate on mobile
   if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 500]);
-  // Notification if granted
   if (Notification.permission === 'granted') {
-    new Notification('🎯 It\'s your turn!', { body: 'Head to the shooting range now.', icon: '' });
+    new Notification('🎯 It\'s your turn!', { body: 'Head to the shooting range now.' });
   } else if (Notification.permission !== 'denied') {
     Notification.requestPermission().then(p => {
       if (p === 'granted') new Notification('🎯 It\'s your turn!', { body: 'Head to the shooting range now.' });
     });
   }
 }
-// Reset ping flag when no longer your-turn
-function resetPingFlag() {
-  if (myState !== 'your-turn') pingedThisTurn = false;
-}
+function resetPingFlag() { if (myState !== 'your-turn') pingedThisTurn = false; }
 
-// ── LEADERBOARD ───────────────────────────────────────────────────────────────
 function bestScore(name) {
   const hist = state.history ? state.history[name] : null;
   if (!hist || hist.length === 0) return 0;
   return Math.max(...hist.map(h => h.score));
 }
+
 function renderLeaderboard() {
-  const names   = Object.keys(state.players);
-  const entries = names.map(n => ({ name: n, best: bestScore(n) }))
-                       .sort((a, b) => b.best - a.best);
-  const lb = document.getElementById('lb-body');
-  lb.innerHTML = entries.length
+  const entries = Object.keys(state.players)
+    .map(n => ({ name: n, best: bestScore(n) }))
+    .sort((a, b) => b.best - a.best);
+  document.getElementById('lb-body').innerHTML = entries.length
     ? entries.map(({ name, best }, i) => `
         <tr>
           <td>${['🥇','🥈','🥉'][i] || i+1}</td>
@@ -496,47 +455,37 @@ function renderLeaderboard() {
     : '<tr class="empty-row"><td colspan="4">No players yet</td></tr>';
 }
 
-// ── ADMIN RENDER ──────────────────────────────────────────────────────────────
 function renderAdmin() {
-  const names   = Object.keys(state.players);
-  const entries = names.map(n => ({ name: n, score: state.players[n], best: bestScore(n) }))
-                       .sort((a, b) => b.best - a.best);
+  const entries = Object.keys(state.players)
+    .map(n => ({ name: n, score: state.players[n], best: bestScore(n) }))
+    .sort((a, b) => b.best - a.best);
 
-  document.getElementById('a-total').textContent = names.length;
-  document.getElementById('a-qlen').textContent  = (state.queue || []).length;
-  document.getElementById('a-top').textContent   = entries.length ? (entries[0].best || '—') : '—';
+  document.getElementById('a-total').textContent  = Object.keys(state.players).length;
+  document.getElementById('a-qlen').textContent   = (state.queue || []).length;
+  document.getElementById('a-top').textContent    = entries.length ? (entries[0].best || '—') : '—';
   document.getElementById('a-active').textContent = state.active || '—';
 
-  // Session card
   renderSessionCard();
-
-  // Queue
   renderQueueAdmin();
 
-  // Score dropdown
-  const sp = document.getElementById('score-player');
+  const sp   = document.getElementById('score-player');
   const prev = sp.value;
   sp.innerHTML = '<option value="">Select player…</option>' +
     entries.map(({ name }) => `<option value="${esc(name)}">${esc(name)}</option>`).join('');
   sp.value = prev;
 
-  // All players table
-  const tbody = document.getElementById('admin-body');
-  tbody.innerHTML = entries.length
+  document.getElementById('admin-body').innerHTML = entries.length
     ? entries.map(({ name, score, best }, i) => {
         const isActive = state.active === name;
         const inQueue  = state.queue && state.queue.includes(name);
         const qPos     = inQueue ? state.queue.indexOf(name) + 1 : null;
-        return `
-        <tr>
+        return `<tr>
           <td>${['🥇','🥈','🥉'][i] || i+1}</td>
           <td>${esc(name)}</td>
           <td class="score-val">${score}</td>
           <td style="color:var(--muted)">${best || '—'}</td>
-          <td>${isActive
-              ? '<span class="tag-live">live</span>'
-              : inQueue
-                ? `<span class="tag-wait">#${qPos}</span>` : '—'}</td>
+          <td>${isActive ? '<span class="tag-live">live</span>'
+              : inQueue  ? `<span class="tag-wait">#${qPos}</span>` : '—'}</td>
           <td>
             ${!isActive ? `<button class="start-btn" onclick="adminStartDirect('${esc(name)}')">▶ Start</button>` : ''}
             ${isActive  ? `<button class="end-btn-sm" onclick="adminEnd()">■ End</button>` : ''}
@@ -549,10 +498,8 @@ function renderAdmin() {
 function renderSessionCard() {
   const sc = document.getElementById('session-content');
   if (state.active) {
-    const elapsed   = state.session_elapsed || 0;
-    const total     = state.session_duration || 120;
-    const remaining = Math.max(0, total - elapsed);
-    const pct       = Math.max(0, (remaining / total) * 100);
+    const remaining = Math.max(0, state.session_duration - (state.session_elapsed || 0));
+    const pct       = Math.max(0, (remaining / state.session_duration) * 100);
     const m = Math.floor(remaining / 60);
     const s = remaining % 60;
     const barColor  = pct > 40 ? 'var(--green)' : pct > 15 ? 'var(--orange)' : 'var(--red)';
@@ -596,25 +543,19 @@ function renderQueueAdmin() {
           <button class="btn btn-orange btn-sm" onclick="adminSkip('${esc(name)}')">⏭ Skip</button>
           <button class="btn btn-ghost btn-sm" onclick="adminRemoveQueue('${esc(name)}')">✕ Remove</button>
         </div>
-      </div>`).join('') +
-    '</div>';
+      </div>`).join('') + '</div>';
 }
 
-// ── PLAYER ACTIONS ─────────────────────────────────────────────────────────────
 async function registerPlayer() {
   const name = document.getElementById('reg-name').value.trim();
   if (!name) return;
   try {
     const d = await post("/register", { name });
     if (d.ok) {
-      myPlayer = name;
-      myState  = 'queued';
-      pingedThisTurn = false;
+      myPlayer = name; myState = 'queued'; pingedThisTurn = false;
       document.getElementById('reg-name').value = '';
       await fetchState();
-    } else {
-      flash('reg-flash', d.error, 'err');
-    }
+    } else flash('reg-flash', d.error, 'err');
   } catch { flash('reg-flash', 'Bridge offline', 'err'); }
 }
 
@@ -622,45 +563,26 @@ async function rejoinQueue() {
   if (!myPlayer) return;
   try {
     const d = await post("/rejoin-queue", { name: myPlayer });
-    if (d.ok) {
-      myState = 'queued';
-      pingedThisTurn = false;
-      await fetchState();
-    } else {
-      flash('reg-flash', d.error, 'err');
-    }
+    if (d.ok) { myState = 'queued'; pingedThisTurn = false; await fetchState(); }
+    else flash('reg-flash', d.error, 'err');
   } catch { flash('reg-flash', 'Bridge offline', 'err'); }
 }
 
-// ── ADMIN ACTIONS ──────────────────────────────────────────────────────────────
-async function adminStartDirect(name) {
-  const d = await post("/start", { name });
-  if (d.ok) await fetchState();
-}
+async function adminStartDirect(name) { const d = await post("/start", { name }); if (d.ok) await fetchState(); }
 async function adminEnd() {
   if (!confirm(`End ${state.active}'s session? Score will be saved to history.`)) return;
-  await post("/end", {});
-  await fetchState();
+  await post("/end", {}); await fetchState();
 }
-async function adminSkip(name) {
-  await post("/skip", { name });
-  await fetchState();
-}
-async function adminRemoveQueue(name) {
-  await post("/remove-queue", { name });
-  await fetchState();
-}
+async function adminSkip(name)        { await post("/skip", { name }); await fetchState(); }
+async function adminRemoveQueue(name) { await post("/remove-queue", { name }); await fetchState(); }
 async function adminSetScore() {
   const name  = document.getElementById('score-player').value;
   const score = parseInt(document.getElementById('score-val').value);
-  if (!name)               return flash('score-flash', 'Select a player', 'err');
+  if (!name)             return flash('score-flash', 'Select a player', 'err');
   if (isNaN(score)||score<0) return flash('score-flash', 'Enter a valid score', 'err');
   const d = await post("/score", { name, score });
-  if (d.ok) {
-    flash('score-flash', `✓ ${name} → ${score}`, 'ok');
-    document.getElementById('score-val').value = '';
-    await fetchState();
-  } else flash('score-flash', d.error, 'err');
+  if (d.ok) { flash('score-flash', `✓ ${name} → ${score}`, 'ok'); document.getElementById('score-val').value = ''; await fetchState(); }
+  else flash('score-flash', d.error, 'err');
 }
 async function deletePlayer(name) {
   if (!confirm(`Remove ${name}?`)) return;
@@ -669,10 +591,10 @@ async function deletePlayer(name) {
   fetchState();
 }
 
-// ── UTILS ──────────────────────────────────────────────────────────────────────
 async function post(path, body) {
   const r = await fetch(API + path, {
-    method:"POST", headers:{"Content-Type":"application/json"},
+    method: "POST",
+    headers: HEADERS,
     body: JSON.stringify(body)
   });
   return r.json();
@@ -693,10 +615,8 @@ function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── BOOT ──────────────────────────────────────────────────────────────────────
 fetchState();
 setInterval(() => { resetPingFlag(); fetchState(); }, 1000);
 </script>
 </body>
 </html>
-
